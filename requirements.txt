@@ -1,4 +1,4 @@
-torch
 matplotlib
 jupyter
 h5py
+numpy
