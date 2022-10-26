@@ -1,0 +1,3 @@
+improved dice loss : https://ieeexplore.ieee.org/document/9338261
+u-net implementation : https://amaarora.github.io/2020/09/13/unet.html
+understanding u-net : https://towardsdatascience.com/understanding-semantic-segmentation-with-unet-6be4f42d4b47
