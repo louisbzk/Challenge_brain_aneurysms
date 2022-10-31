@@ -24,8 +24,9 @@ class PAMModule(Module):
             in_channels=in_dim, out_channels=in_dim // 8, kernel_size=1)
         self.value_conv = Conv3d(
             in_channels=in_dim, out_channels=in_dim, kernel_size=1)
-        self.gamma = Parameter(torch.zeros(1))
 
+        # TODO : ! gamma == 0 => no attention value !
+        self.gamma = Parameter(torch.zeros(1))
         self.softmax = Softmax(dim=-1)
 
     def forward(self, x):
@@ -60,6 +61,7 @@ class CAMModule(Module):
         super(CAMModule, self).__init__()
         self.chanel_in = in_dim
 
+        # TODO : ! gamma == 0 => no attention value !
         self.gamma = Parameter(torch.zeros(1))
         self.softmax = Softmax(dim=-1)
 
