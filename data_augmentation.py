@@ -1,7 +1,7 @@
-import PIL.Image
 import numpy as np
 from PIL import Image, ImageEnhance
 from utils import get_raws, get_labels, load_data
+from dataviz import view_sample, show_aneurysm
 
 
 class DataEnhancer:
@@ -21,16 +21,20 @@ class DataEnhancer:
         self.data_shape = (len(self.data), *sample_shape)
 
     def raws(self):
-        raws = np.empty(shape=self.data_shape, dtype=Image)
+        raws = np.empty(shape=self.data_shape, dtype=np.uint8)
         for i in range(self.data_shape[0]):
-            raws[i] = self.data[i][0]
+            for channel in range(self.data_shape[1]):
+                raws[i][channel] = np.asarray(
+                    self.data[i][channel][0], dtype=np.uint8)
 
         return raws
 
     def labels(self):
-        labels = np.empty(shape=self.data_shape, dtype=Image)
+        labels = np.empty(shape=self.data_shape, dtype=np.uint8)
         for i in range(self.data_shape[0]):
-            labels[i] = self.data[i][1]
+            for channel in range(self.data_shape[1]):
+                labels[i][channel] = np.asarray(
+                    self.data[i][channel][1], dtype=np.uint8)
 
         return labels
 
@@ -90,17 +94,22 @@ class DataEnhancer:
             for channel in range(self.data_shape[1]):
                 raw = self.data[i][channel][0]
 
-                raw = raw.quantize(
+                self.data[i][channel][0] = raw.quantize(
                     colors=n_colors, kmeans=kmeans, method=method)
 
 
 def main():
+    # For debugging purposes
     data = load_data('challenge_dataset/')
     enhancer = DataEnhancer(data=data)
-    enhancer.rand_rotate(max_abs_rot=20.)
-    enhancer.contrast_raws(factor=1.4)
-    enhancer.sharpen(factor=1.15)
-    enhancer.cluster_raws(n_colors=3, kmeans=0)
+    enhancer.rand_rotate(max_abs_rot=20.)  # rand_rotate : OK
+    enhancer.contrast_raws(factor=1.4)  # contrast_raws : OK
+    enhancer.sharpen(factor=1.15)  # sharpen : OK
+    enhancer.cluster_raws(n_colors=3, kmeans=0)  # cluster_raws : OK
+    raws = enhancer.raws()
+    view_sample(raws, 0)
+    labels = enhancer.labels()
+    show_aneurysm(raws, labels, 0)
 
 
 if __name__ == '__main__':
