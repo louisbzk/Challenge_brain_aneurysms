@@ -6,3 +6,4 @@ torch
 torchvision
 torchviz
 pillow
+multipledispatch
