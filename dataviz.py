@@ -43,7 +43,6 @@ def show_aneurysm(imgs,
     :param img_cmap: str or matplotlib color map object
     :return: None
     """
-    print("here 1")  # jingwei
     raw, label = imgs[idx]['raw'], imgs[idx]['label']
     _show_aneurysm_raw_label(raw, label, img_cmap, label_cmap, plot_size)
 
@@ -65,7 +64,6 @@ def show_aneurysm(raws: np.ndarray,
     :param img_cmap: str or matplotlib color map object
     :return: None
     """
-    print("here 2")  # jingwei
     raw, label = raws[idx], labels[idx]
     _show_aneurysm_raw_label(raw, label, img_cmap, label_cmap, plot_size)
 
@@ -81,7 +79,6 @@ def show_aneurysm(raws: np.ndarray,
     :param idx: int in [0, 105]
     :return: None
     """
-    print("here 3")  # jingwei
     show_aneurysm(raws, labels, idx, 6, 'gray', 'gray')
 
 
