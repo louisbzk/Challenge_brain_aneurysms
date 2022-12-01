@@ -28,7 +28,7 @@ def view_sample(array, idx):
             _ax[i][j].imshow(array[idx][8 * i + j], cmap='gray')
 
 
-@dispatch(list, int, int, str, str)
+@dispatch(list, int, plot_size=int, img_cmap=str, label_cmap=str)
 def show_aneurysm(imgs,
                   idx: int,
                   plot_size=6,
@@ -43,11 +43,12 @@ def show_aneurysm(imgs,
     :param img_cmap: str or matplotlib color map object
     :return: None
     """
+    print("here 1")  # jingwei
     raw, label = imgs[idx]['raw'], imgs[idx]['label']
     _show_aneurysm_raw_label(raw, label, img_cmap, label_cmap, plot_size)
 
 
-@dispatch(np.ndarray, np.ndarray, int, int, str, str)
+@dispatch(np.ndarray, np.ndarray, int, plot_size=int, img_cmap=str, label_cmap=str)
 def show_aneurysm(raws: np.ndarray,
                   labels: np.ndarray,
                   idx: int,
@@ -64,6 +65,7 @@ def show_aneurysm(raws: np.ndarray,
     :param img_cmap: str or matplotlib color map object
     :return: None
     """
+    print("here 2")  # jingwei
     raw, label = raws[idx], labels[idx]
     _show_aneurysm_raw_label(raw, label, img_cmap, label_cmap, plot_size)
 
@@ -79,6 +81,7 @@ def show_aneurysm(raws: np.ndarray,
     :param idx: int in [0, 105]
     :return: None
     """
+    print("here 3")  # jingwei
     show_aneurysm(raws, labels, idx, 6, 'gray', 'gray')
 
 
@@ -109,8 +112,10 @@ def _show_aneurysm_raw_label(raw: np.ndarray,
     i_max = len(label) + i_max
 
     n_imgs = i_max - i_min + 1
-    _, axes = plt.subplots(n_imgs, 2, figsize=(
+    _, axes = plt.subplots(2, n_imgs, figsize=(
         plot_size, n_imgs * plot_size // 2))
     for i in range(n_imgs):
-        axes[i][0].imshow(raw[i + i_min], cmap=img_cmap)
-        axes[i][1].imshow(label[i + i_min], cmap=label_cmap)
+        axes[i][0].imshow(raw[(i + i_min)%len(label)], cmap=img_cmap)
+        axes[i][1].imshow(label[(i + i_min)%len(label)], cmap=label_cmap)
+
+    plt.show()
