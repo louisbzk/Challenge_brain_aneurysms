@@ -114,5 +114,3 @@ def _show_aneurysm_raw_label(raw: np.ndarray,
     for i in range(n_imgs):
         axes[i][0].imshow(raw[(i + i_min)%len(label)], cmap=img_cmap)
         axes[i][1].imshow(label[(i + i_min)%len(label)], cmap=label_cmap)
-
-    plt.show()
