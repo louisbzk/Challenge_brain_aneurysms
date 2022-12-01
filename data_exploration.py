@@ -38,8 +38,5 @@ print(f'\nTotal irregular samples : {no_aneurysm_samples + multiple_aneurysms}\n
       f'Samples with more than one aneurysm : {multiple_aneurysms}')
 
 view_sample(data, 5, 'label')
-plt.show()
 
 show_aneurysm(data, 0, plot_size=3)
-plt.show()
-
