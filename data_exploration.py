@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 import os
 from dataviz import view_sample, show_aneurysm
+import matplotlib.pyplot as plt
 
 
 data = []
@@ -37,5 +38,8 @@ print(f'\nTotal irregular samples : {no_aneurysm_samples + multiple_aneurysms}\n
       f'Samples with more than one aneurysm : {multiple_aneurysms}')
 
 view_sample(data, 5, 'label')
+plt.show()
 
-show_aneurysm(data, 0, 8)
+show_aneurysm(data, 0, plot_size=8)
+plt.show()
+
