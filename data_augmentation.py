@@ -95,7 +95,7 @@ class DataEnhancer:
                 raw = self.data[i][channel][0]
 
                 self.data[i][channel][0] = raw.quantize(
-                    colors=n_colors, kmeans=kmeans, method=method)
+                    colors=n_colors, kmeans=kmeans, method=method).convert('L')
 
 
 def main():
@@ -104,8 +104,8 @@ def main():
     enhancer = DataEnhancer(data=data)
     enhancer.rand_rotate(max_abs_rot=20.)  # rand_rotate : OK
     enhancer.contrast_raws(factor=1.4)  # contrast_raws : OK
-    enhancer.sharpen(factor=1.15)  # sharpen : OK
     enhancer.cluster_raws(n_colors=3, kmeans=0)  # cluster_raws : OK
+    enhancer.sharpen(factor=1.15)  # sharpen : OK
     raws = enhancer.raws()
     view_sample(raws, 0)
     labels = enhancer.labels()
