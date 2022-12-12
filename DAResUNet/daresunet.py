@@ -1,5 +1,5 @@
 """
-ORIGINAL CODE FROM : https://github.com/deepwise-code/DLIA/blob/main/tasks/aneurysm/nets/daresunet.py
+ORIGINAL CODE FROM : https://github.com/deepwise-code/DLIA/blob/main/tasks/aneurysm/nets/aneurysm_net.py
 PAPER : https://www.nature.com/articles/s41467-020-19527-w
 """
 from __future__ import absolute_import
