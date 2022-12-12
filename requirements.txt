@@ -8,3 +8,4 @@ torchviz
 pillow
 multipledispatch
 plotly
+scipy
