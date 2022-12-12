@@ -28,7 +28,7 @@ def view_sample(array, idx):
             _ax[i][j].imshow(array[idx][8 * i + j], cmap='gray')
 
 
-@dispatch(list, int, plot_size=int, img_cmap=str, label_cmap=str)
+@dispatch(list, int, int, str, str)
 def show_aneurysm(imgs,
                   idx: int,
                   plot_size=6,
@@ -47,7 +47,7 @@ def show_aneurysm(imgs,
     _show_aneurysm_raw_label(raw, label, img_cmap, label_cmap, plot_size)
 
 
-@dispatch(np.ndarray, np.ndarray, int, plot_size=int, img_cmap=str, label_cmap=str)
+@dispatch(np.ndarray, np.ndarray, int, int, str, str)
 def show_aneurysm(raws: np.ndarray,
                   labels: np.ndarray,
                   idx: int,
@@ -110,9 +110,9 @@ def _show_aneurysm_raw_label(raw: np.ndarray,
 
     n_imgs = i_max - i_min + 1
     _, axes = plt.subplots(2, n_imgs, figsize=(
-        n_imgs * plot_size // 2, plot_size))
+        n_imgs * plot_size // 2, 2 * plot_size))
     for i in range(n_imgs):
-        axes[0][i].imshow(raw[(i + i_min)%len(label)], cmap=img_cmap)
-        axes[1][i].imshow(label[(i + i_min)%len(label)], cmap=label_cmap)
+        axes[0][i].imshow(raw[i + i_min], cmap=img_cmap)
+        axes[1][i].imshow(label[i + i_min], cmap=label_cmap)
 
     _.show()
