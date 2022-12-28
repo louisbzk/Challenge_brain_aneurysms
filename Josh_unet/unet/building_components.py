@@ -24,7 +24,7 @@ class ConvBlock(nn.Module):
 class EncoderBlock(nn.Module):
     def __init__(self, in_channels, model_depth=4, pool_size=2):
         super(EncoderBlock, self).__init__()
-        self.root_feat_maps = 16
+        self.root_feat_maps = 4
         self.num_conv_blocks = 2
         # self.module_list = nn.ModuleList()
         self.module_dict = nn.ModuleDict()
@@ -48,12 +48,12 @@ class EncoderBlock(nn.Module):
         for k, op in self.module_dict.items():
             if k.startswith("conv"):
                 x = op(x)
-                print(k, x.shape)
+                # print(k, x.shape)
                 if k.endswith("1"):
                     down_sampling_features.append(x)
             elif k.startswith("max_pooling"):
                 x = op(x)
-                print(k, x.shape)
+                # print(k, x.shape)
 
         return x, down_sampling_features
 
@@ -76,7 +76,7 @@ class DecoderBlock(nn.Module):
     def __init__(self, out_channels, model_depth=4):
         super(DecoderBlock, self).__init__()
         self.num_conv_blocks = 2
-        self.num_feat_maps = 16
+        self.num_feat_maps = 4
         # user nn.ModuleDict() to store ops
         self.module_dict = nn.ModuleDict()
 
@@ -118,16 +118,16 @@ if __name__ == "__main__":
     # x has shape of (batch_size, channels, depth, height, width)
 
     x_test = torch.randn(1, 1, 64, 64, 64)
-    # x_test = x_test.cuda()
+    x_test = x_test.cuda()
     print("The shape of input: ", x_test.shape)
 
     encoder = EncoderBlock(in_channels=1)
-    # encoder.cuda()
+    encoder.cuda()
     # print(encoder)
     x_test, h = encoder(x_test)
 
     db = DecoderBlock(out_channels=1)
-    # db.cuda()
+    db.cuda()
     x_test = db(x_test, h)
 
     print(x_test.shape)

@@ -6,6 +6,7 @@ import time
 import torch
 import torch.nn as nn
 from unet.building_components import EncoderBlock, DecoderBlock
+from tqdm import tqdm
 sys.path.append("..")
 
 
@@ -24,13 +25,13 @@ class UnetModel(nn.Module):
         x, downsampling_features = self.encoder(x)
         x = self.decoder(x, downsampling_features)
         x = self.sigmoid(x)
-        print("Final output shape: ", x.shape)
+        # print("Final output shape: ", x.shape)
         return x
 
 
 class Trainer(object):
 
-    def __init__(self, net, optimizer, criterion, no_epochs, batch_size=8):
+    def __init__(self, net, optimizer, criterion, no_epochs, batch_size=1):
         """
         Parameter initialization
         :param data_dir: folder that stores images for each modality
@@ -59,23 +60,22 @@ class Trainer(object):
         """
         pets, masks = x,y
         training_steps = len(pets) // self.batch_size
-
-
-
+        print(len(pets), self.batch_size)
+        loss_array=[]
         for epoch in range(self.no_epochs):
+            print("Epoch no: ", epoch)
             start_time = time.time()
             train_losses, train_iou = 0, 0
-            for step in range(training_steps):
-                print("Training step {}".format(step))
+            for step in tqdm(range(training_steps)):
+                # print("Training step {}".format(step))
 
                 x_batch, y_batch = batch_data_loader(pets, masks, iter_step=step, batch_size=self.batch_size)
-                x_batch = torch.from_numpy(x_batch)#.cuda()
-                y_batch = torch.from_numpy(y_batch)#.cuda()
+                x_batch = torch.from_numpy(x_batch).cuda()
+                y_batch = torch.from_numpy(y_batch).cuda()
 
                 self.optimizer.zero_grad()
 
                 logits = self.net(x_batch)
-                print("tg2")
                 y_batch = y_batch.type(torch.int8)
                 loss = self.criterion(logits, y_batch)
                 loss.backward()
@@ -83,8 +83,10 @@ class Trainer(object):
                 # train_iou += mean_iou(y_batch, logits)
                 train_losses += loss.item()
             end_time = time.time()
+            loss_array.append(train_losses / training_steps)
             print("Epoch {}, training loss {:.4f}, time {:.2f}".format(epoch, train_losses / training_steps,
                                                                        end_time - start_time))
+        return loss_array
 
     def predict(self):
         pass
@@ -98,7 +100,7 @@ if __name__ == "__main__":
     print("The shape of inputs: ", inputs.shape)
     data_folder = "../processed"
     model = UnetModel(in_channels=1, out_channels=1)
-    # inputs = inputs.cuda()
-    # model.cuda()
+    inputs = inputs.cuda()
+    model.cuda()
     x = model(inputs)
     print(model)
