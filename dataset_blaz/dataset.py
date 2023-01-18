@@ -27,6 +27,8 @@ class AneurysmDataset(Dataset):
         self.joint_transform = joint_transform
         self.raw_transform = raw_transform
         self.label_transform = label_transform
+        device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+        self.device = torch.device(device)
 
         try:
             _, _, files = next(os.walk(dataset_path))
@@ -55,5 +57,8 @@ class AneurysmDataset(Dataset):
             label = self.label_transform(label)
         if self.joint_transform:
             raw, label = self.joint_transform(raw, label)
+
+        raw = torch.from_numpy(raw)
+        label = torch.from_numpy(label)
 
         return raw, label

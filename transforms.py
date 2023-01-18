@@ -14,8 +14,8 @@ def load_as_images(raw_3d: np.ndarray, label_3d: np.ndarray):
     :return: array of images (the 2D slices)
     """
     channels, width, height = raw_3d.shape
-    raws = np.empty(shape=channels, dtype=Image)
-    labels = np.empty(shape=channels, dtype=Image)
+    raws = np.empty(shape=channels, dtype=object)
+    labels = np.empty(shape=channels, dtype=object)
     for i in range(channels):
         raws[i] = Image.fromarray(raw_3d[i], mode='L')
         labels[i] = Image.fromarray(label_3d[i], mode='L')
@@ -23,7 +23,7 @@ def load_as_images(raw_3d: np.ndarray, label_3d: np.ndarray):
     return raws, labels
 
 
-def rand_rotate(raws: np.ndarray[Image], labels: np.ndarray[Image], max_abs_rot: float):
+def rand_rotate(raws: np.ndarray, labels: np.ndarray, max_abs_rot: float):
     """
     Rotate raw and label by a random angle. A joint transform.
 
@@ -37,7 +37,7 @@ def rand_rotate(raws: np.ndarray[Image], labels: np.ndarray[Image], max_abs_rot:
         labels[channel] = labels[channel].rotate(angle)
 
 
-def sharpen(raws: np.ndarray[Image], labels: np.ndarray[Image], factor: float):
+def sharpen(raws: np.ndarray, labels: np.ndarray, factor: float):
     """
     Sharpen labels and raws by a given factor. A joint transform.
 
@@ -52,24 +52,7 @@ def sharpen(raws: np.ndarray[Image], labels: np.ndarray[Image], factor: float):
         labels[channel] = enhancer_label.enhance(factor=factor)
 
 
-def _shannon_zoom(img: Image, end_size: int):
-    img_arr = np.array(img).astype(np.float64)
-    img_size = len(img_arr)
-    hl = end_size // 2 - img_size // 2  # half-length of the box to zoom into
-    scaling = end_size / img_size
-
-    # the fft of the end image is an image with the fft of the box on the middle, and the rest is zero-padded
-    end_img_fft = np.zeros(shape=(end_size, end_size), dtype=np.complex)
-    end_img_fft[hl:hl + img_size, hl:hl + img_size] = np.fft.fftshift(np.fft.fft2(img_arr))
-
-    # this is a float64 image
-    end_img = scaling**2 * np.real(np.fft.ifft2(np.fft.ifftshift(end_img_fft)))
-
-    img_min, img_max = np.min(end_img), np.max(end_img)
-    return Image.fromarray((255 * (end_img - img_min) / (img_max - img_min)).astype(np.uint8))
-
-
-def zoom(raws: np.ndarray[Image], labels: np.ndarray[Image], box_size: int):
+def zoom(raws: np.ndarray, labels: np.ndarray, box_size: int):
     """
     Zoom on an area of the image, centered at the middle. A joint transform.
 
@@ -91,17 +74,17 @@ def zoom(raws: np.ndarray[Image], labels: np.ndarray[Image], box_size: int):
     # crop the image, then resize (zoom) to original size (w, h)
     # define crop box
     x_left, x_right = img_center[0] - box_size // 2, img_center[0] + box_size // 2
-    y_bottom, y_top = img_center[1] - box_size // 2, img_center[1] + box_size // 2
+    y_top, y_bottom = img_center[1] - box_size // 2, img_center[1] + box_size // 2
 
     for channel in range(len(raws)):
         raw_crop = raws[channel].crop((x_left, y_top, x_right, y_bottom))
         label_crop = labels[channel].crop((x_left, y_top, x_right, y_bottom))
 
-        raws[channel] = _shannon_zoom(raw_crop, w)
-        labels[channel] = _shannon_zoom(label_crop, w)
+        raws[channel] = raw_crop.resize((w, h), resample=Image.BICUBIC)
+        labels[channel] = label_crop.resize((w, h), resample=Image.BICUBIC)
 
 
-def contrast(raws: np.ndarray[Image], factor: float):
+def contrast(raws: np.ndarray, factor: float):
     """
     Contrast raws by a given factor. A raw transform.
 
@@ -113,7 +96,7 @@ def contrast(raws: np.ndarray[Image], factor: float):
         raws[channel] = enhancer_raw.enhance(factor=factor)
 
 
-def cluster(raws: np.ndarray[Image], n_colors: int, kmeans: int = 0, method=0):
+def cluster(raws: np.ndarray, n_colors: int, kmeans: int = 0, method=0):
     """
     Cluster raws in clusters of colors. A raw transform.
 
@@ -158,6 +141,17 @@ def clean_label(labels, dist_from_center_thresh=10.):
                 labels[channel] = Image.fromarray(np.zeros_like(labels[channel]), mode=labels[channel].mode)
 
 
+def _img_to_numpy(raws, labels):
+    raws_np = np.empty(shape=(len(raws), *raws[0].size), dtype=np.float32)
+    labels_np = np.empty(shape=(len(raws), *raws[0].size), dtype=np.float32)
+
+    for channel in range(len(raws)):
+        raws_np[channel] = np.asarray(raws[channel], dtype=np.float32)
+        labels_np[channel] = np.asarray(labels[channel], dtype=np.float32)
+
+    return raws_np, labels_np
+
+
 def raw_transform(raws, contrast_factor, cluster_colors, cluster_kmeans=0, cluster_method=0):
     contrast(raws, contrast_factor)
     cluster(raws, cluster_colors, cluster_kmeans, cluster_method)
@@ -174,4 +168,5 @@ def joint_transform(raws, labels, max_abs_rot, sharpen_factor, zoom_box):
     rand_rotate(raws, labels, max_abs_rot)
     zoom(raws, labels, zoom_box)
     # todo : dist transform ?
-    return raws, labels
+    raws_np, labels_np = _img_to_numpy(raws, labels)
+    return raws_np, labels_np

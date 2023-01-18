@@ -42,7 +42,10 @@ def load_model(PATH, eval=True):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
-    model.to(torch.device('cuda'))
+
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    device = torch.device(device)
+    model.to(device)
 
     if eval:
         model.eval()
@@ -112,6 +115,8 @@ if __name__ == '__main__':
     # y = np.array(y)
     # x = np.expand_dims(x, axis=1)
     # y = np.expand_dims(y, axis=1)
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    device = torch.device(device)
 
     train = False
     x, y = load_data('FormattedData')
@@ -122,7 +127,10 @@ if __name__ == '__main__':
     else:
         model, optimizer, loss, epoch = load_model('holaBuenoDias', eval=True)
 
-    newY = model(torch.from_numpy(x[:1]).cuda()).cpu().detach().numpy()
+    if device.type == 'cuda':
+        newY = model(torch.from_numpy(x[:1]).cuda()).cpu().detach().numpy()
+    else:
+        newY = model(torch.from_numpy(x[:1])).cpu().detach().numpy()
 
     z_plot, x_plot, y_plot = (newY[0, 0] > 0.7).nonzero()
     vein_data = go.Scatter3d(
