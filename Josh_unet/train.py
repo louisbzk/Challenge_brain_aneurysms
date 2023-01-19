@@ -28,16 +28,17 @@ def save_model(model, optimizer, epoch, loss, lr, PATH):
             'loss': loss,
             'learning_rate' : lr
             }, PATH)
+            
 def load_model(PATH, eval =True):
     checkpoint = torch.load(PATH)
     model = UnetModel(in_channels=1, out_channels=1)
+    model.cuda()
     optimizer = torch.optim.Adam(params=model.parameters(), lr=checkpoint['learning_rate'])
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
-    model.to(torch.device('cuda'))
-
+    # model = model.to(torch.device('cuda'))
     if eval:
         model.eval()
     # - or -
@@ -82,6 +83,14 @@ def train_main(x,y, in_channels, out_channels, learning_rate, no_epochs):
     save_model(model, optim, no_epochs, loss_array, learning_rate, "holaBuenoDias")
     return model, optim, loss_array, epoch
 
+def resume_train(x,y, model, optim, previous_loss_array, learning_rate, no_epochs):
+    criterion = DiceLoss()
+    trainer = Trainer(net=model, optimizer=optim, criterion=criterion, no_epochs=no_epochs)
+    loss_array = trainer.train(batch_data_loader=batch_data_gen, x=x, y=y)
+    loss_array = previous_loss_array + loss_array 
+    save_model(model, optim, no_epochs, loss_array, learning_rate, "holaBuenoDias")
+    return model, optim, loss_array, epoch
+
 
 if __name__ == "__main__":
     # data = []
@@ -106,33 +115,42 @@ if __name__ == "__main__":
     # x = np.expand_dims(x, axis=1)
     # y = np.expand_dims(y, axis=1)
 
-    train = False
+    
     x, y = load_data("FormattedData")
+    print(x.shape)
+    train = "NoTrain"
+    if True:
+        if train == "New":
+            model, optimizer, loss, epoch = train_main(x[:],y[:], in_channels=1, out_channels=1, learning_rate=0.01, no_epochs=10)
+        elif train == "NoTrain":
+            model, optimizer, loss, epoch = load_model("holaBuenoDias", eval=True)
+        elif train == "ResumeTrain":
+            model, optimizer, loss, epoch = load_model("holaBuenoDias", eval=False)
+            model, optimizer, loss, epoch = resume_train(x[:],y[:], model, optimizer, loss, 0.01, 10)
 
-    if train:
-        model, optimizer, loss, epoch = train_main(x[:],y[:], in_channels=1, out_channels=1, learning_rate=0.01, no_epochs=10)
-    else:
-        model, optimizer, loss, epoch = load_model("holaBuenoDias", eval=True)
 
-    newY = model(torch.from_numpy(x[:1]).cuda()).cpu().detach().numpy()
+        plt.figure()
+        plt.plot(np.arange(len(loss)), loss)
+        plt.show()
+        newY = model(torch.from_numpy(x[:1]).cuda()).cpu().detach().numpy()
 
-    z_plot,x_plot,y_plot = (newY[0,0]>0.7).nonzero()
-    vein_data = go.Scatter3d(
-    x=x_plot ,
-    y=y_plot, 
-    z=z_plot, 
-    marker=go.scatter3d.Marker(size=1), 
-    opacity=1.0, 
-    mode='markers')
+        z_plot,x_plot,y_plot = (newY[0,0]>0.7).nonzero()
+        vein_data = go.Scatter3d(
+        x=x_plot ,
+        y=y_plot, 
+        z=z_plot, 
+        marker=go.scatter3d.Marker(size=1), 
+        opacity=1.0, 
+        mode='markers')
 
-    z_plot,x_plot,y_plot = (y[0,0]>0.7).nonzero()
-    marker_data = go.Scatter3d(
-    x=x_plot,
-    y=y_plot, 
-    z=z_plot, 
-    marker=go.scatter3d.Marker(size=3), 
-    opacity=1.0, 
-    mode='markers')
+        z_plot,x_plot,y_plot = (y[0,0]>0.7).nonzero()
+        marker_data = go.Scatter3d(
+        x=x_plot,
+        y=y_plot, 
+        z=z_plot, 
+        marker=go.scatter3d.Marker(size=3), 
+        opacity=1.0, 
+        mode='markers')
 
-    fig=go.Figure(data=[marker_data, vein_data])
-    fig.show()
+        fig=go.Figure(data=[marker_data, vein_data])
+        fig.show()
