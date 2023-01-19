@@ -33,8 +33,9 @@ TRANSFORM_PARAMS = {
 
 
 def simple_eval_loop(n_eval, model, dataloader, save_path):
+    it_data = iter(dataloader)
     for i in range(n_eval):
-        sample = next(iter(dataloader))
+        sample = next(it_data)
         raw, label = sample[0].to(model.device), sample[1].to(model.device)
         sample_file = Path(sample[2])
         sample_transforms = sample[3]
@@ -84,19 +85,9 @@ def main(batch_size, n_epochs, n_eval, load_path, eval_save_path, **kwargs):
     plt.show()
 
     torch.save(model.state_dict(), f'models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep{n_epochs}.pth')
-    model.eval()
-
-    for i in range(n_eval):
-        sample = next(enumerate(dataloader))
-        raw, label = sample[0].to(device), sample[1].to(device)
-
-        pred = model(raw).detach().cpu().numpy()
-        label = label.detach().cpu().numpy()
-        np.save(f'models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep{n_epochs}_pred{i}.npy', pred)
-        np.save(f'models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep{n_epochs}_true{i}.npy', label)
 
 
 if __name__ == '__main__':
-    main(batch_size=1, n_epochs=10, n_eval=10,
-         load_path='models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep10.pth',
-         eval_save_path='models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep10', **TRANSFORM_PARAMS)
+    main(batch_size=1, n_epochs=100,
+         load_path='models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep10.pth', n_eval=0,
+         eval_save_path='aaa', **TRANSFORM_PARAMS)

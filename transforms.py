@@ -51,7 +51,7 @@ def rand_flip(raws: np.ndarray, labels: np.ndarray):
     """
     r = np.random.rand()
     if r < 0.25:
-        return  # no flip
+        return ''  # no flip
     elif r < 0.5:
         method = Image.FLIP_LEFT_RIGHT
     elif r < 0.75:
@@ -209,7 +209,7 @@ def label_transform(labels, clean_dist_thresh=10.):
 
 def joint_transform(raws, labels, max_abs_rot, sharpen_factor, zoom_box, flip):
     sharpen(raws, labels, sharpen_factor)
-    flip_method = None
+    flip_method = ''
     if flip:
         flip_method = rand_flip(raws, labels)
     angle = rand_rotate(raws, labels, max_abs_rot)
