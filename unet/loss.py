@@ -3,6 +3,7 @@
 # @Time: 27/08/2019 15:29
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class DiceLoss(nn.Module):
@@ -20,6 +21,63 @@ class DiceLoss(nn.Module):
         dice_score = 2. * intersection / ((logits + targets).sum(-1) + self.epsilon)
         # dice_score = 1 - dice_score.sum() / batch_size
         return torch.mean(1. - dice_score)
+
+
+class DiceBCEFocalLoss(nn.Module):
+    def __init__(self, dice_bce_weight=0.5, smooth=1e-8, focal_gamma=2.):
+        super(DiceBCEFocalLoss, self).__init__()
+        if not (0. <= dice_bce_weight <= 1.):
+            raise ValueError(f'Invalid value for dice_bce_weight ({dice_bce_weight}). Must be between 0 and 1')
+
+        self.smooth = smooth
+        self.dice_bce_weight = dice_bce_weight
+        self.focal_gamma = focal_gamma
+
+    def forward(self, pred, true):
+        inputs = pred.view(-1)  # flatten
+        targets = true.view(-1)
+
+        intersection = (inputs * targets).sum()
+        dice_loss = 1 - (2. * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
+        bce = F.binary_cross_entropy(inputs, targets, reduction='mean')
+        dice_bce = bce + dice_loss
+
+        focal_loss = (1 - torch.exp(-bce))**self.focal_gamma * bce
+
+        return self.dice_bce_weight * dice_bce + (1. - self.dice_bce_weight) * focal_loss
+
+
+class IoUTverskyLoss(nn.Module):
+    def __init__(self, iou_weight, tversky_alpha, tversky_beta, smooth=1e-8):
+        if not (0. <= iou_weight <= 1.):
+            raise ValueError(f'Invalid value for iou_weight ({iou_weight}). Must be between 0 and 1')
+        super(IoUTverskyLoss, self).__init__()
+        self.iou_weight = iou_weight
+        self.tversky_alpha = tversky_alpha
+        self.tversky_beta = tversky_beta
+        self.smooth = smooth
+
+    def forward(self, pred, true):
+        inputs = pred.view(-1)
+        targets = true.view(-1)
+
+        # intersection is equivalent to True Positive count
+        # union is the mutually inclusive area of all labels & predictions
+        intersection = (inputs * targets).sum()
+        total = (inputs + targets).sum()
+        union = total - intersection
+
+        iou = (intersection + self.smooth) / (union + self.smooth)
+        iou_loss = 1. - iou
+
+        TP = (inputs * targets).sum()
+        FP = ((1 - targets) * inputs).sum()
+        FN = (targets * (1. - inputs)).sum()
+
+        tversky = (TP + self.smooth) / (TP + self.tversky_alpha * FP + self.tversky_beta * FN + self.smooth)
+        tversky_loss = 1. - tversky
+
+        return self.iou_weight * iou_loss + (1. - self.iou_weight) * tversky_loss
 
 
 class AsymmetricLoss(nn.Module):

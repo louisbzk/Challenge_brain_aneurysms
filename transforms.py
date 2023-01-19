@@ -2,7 +2,7 @@ import torch
 from torch import Tensor
 import numpy as np
 import scipy.ndimage as scim
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
 
 
 def load_as_images(raw_3d: np.ndarray, label_3d: np.ndarray):
@@ -39,6 +39,8 @@ def rand_rotate(raws: np.ndarray, labels: np.ndarray, max_abs_rot: float):
         raws[channel] = raws[channel].rotate(angle)
         labels[channel] = labels[channel].rotate(angle)
 
+    return angle
+
 
 def rand_flip(raws: np.ndarray, labels: np.ndarray):
     """
@@ -60,6 +62,8 @@ def rand_flip(raws: np.ndarray, labels: np.ndarray):
     for channel in range(len(raws)):
         raws[channel] = raws[channel].transpose(method)
         labels[channel] = labels[channel].transpose(method)
+
+    return method
 
 
 def sharpen(raws: np.ndarray, labels: np.ndarray, factor: float):
@@ -205,10 +209,38 @@ def label_transform(labels, clean_dist_thresh=10.):
 
 def joint_transform(raws, labels, max_abs_rot, sharpen_factor, zoom_box, flip):
     sharpen(raws, labels, sharpen_factor)
+    flip_method = None
     if flip:
-        rand_flip(raws, labels)
-    rand_rotate(raws, labels, max_abs_rot)
+        flip_method = rand_flip(raws, labels)
+    angle = rand_rotate(raws, labels, max_abs_rot)
     zoom(raws, labels, zoom_box)
     # todo : dist transform ?
     raws_np, labels_np = _img_to_numpy(raws, labels)
-    return raws_np, labels_np
+
+    transforms_hist = {
+        'flip_method': flip_method,
+        'rotation_angle': angle,
+        'zoom_box': zoom_box,
+    }
+    return raws_np, labels_np, transforms_hist
+
+
+def undo_transforms(prediction: np.ndarray, transforms_hist):
+    pred_img = Image.fromarray(prediction, mode='L')
+    if transforms_hist['flip_method']:
+        # just apply the same flip
+        pred_img = pred_img.transpose(transforms_hist['flip_method'])
+
+    if transforms_hist['rotation_angle']:
+        # apply opposite rotation
+        pred_img = pred_img.rotate(-transforms_hist['rotation_angle'])
+
+    if transforms_hist['zoom_box']:
+        # reduce image, then zero-pad
+        size = transforms_hist['zoom_box']
+        original_size = pred_img.size
+        pad_size = (original_size[0] - size) // 2
+        pred_img = pred_img.resize(size=(size, size), resample=Image.BICUBIC)
+        pred_img = ImageOps.expand(pred_img, pad_size, fill=0)
+
+    return pred_img

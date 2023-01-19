@@ -51,14 +51,15 @@ class AneurysmDataset(Dataset):
         h5f = h5py.File(file_path)
         raw, label = load_as_images(np.array(h5f['raw']), np.array(h5f['label']))
 
+        transform_hist = None
         if self.raw_transform:
             raw = self.raw_transform(raw)
         if self.label_transform:
             label = self.label_transform(label)
         if self.joint_transform:
-            raw, label = self.joint_transform(raw, label)
+            raw, label, transform_hist = self.joint_transform(raw, label)
 
         raw = torch.from_numpy(raw).unsqueeze(0)  # add 1 dimension
         label = torch.from_numpy(label).unsqueeze(0)
 
-        return raw, label
+        return raw, label, file_path, transform_hist

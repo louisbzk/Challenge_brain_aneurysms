@@ -1,12 +1,13 @@
 import torch.optim
 
 from dataset import AneurysmDataset
-from transforms import raw_transform, label_transform, joint_transform
+from transforms import raw_transform, label_transform, joint_transform, undo_transforms
 from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
 import numpy as np
 from unet.unet3d import UnetModel, Trainer
-from unet.loss import DiceLoss
+from unet.loss import DiceLoss, DiceBCEFocalLoss
+from pathlib import Path
 
 
 # set variables to None to skip the corresponding transform
@@ -31,7 +32,23 @@ TRANSFORM_PARAMS = {
 }
 
 
-def main(batch_size, **kwargs):
+def simple_eval_loop(n_eval, model, dataloader, save_path):
+    for i in range(n_eval):
+        sample = next(iter(dataloader))
+        raw, label = sample[0].to(model.device), sample[1].to(model.device)
+        sample_file = Path(sample[2])
+        sample_transforms = sample[3]
+
+        pred = model(raw).detach().cpu().numpy()
+        pred = undo_transforms(pred, sample_transforms)
+        label = label.detach().cpu().numpy()
+        full_save_path = Path(save_path).joinpath(sample_file.name)
+        np.save(str(full_save_path), pred)
+        np.save(str(full_save_path), label)
+    return
+
+
+def main(batch_size, n_epochs, n_eval, load_path, eval_save_path, **kwargs):
     def joint_transform_fixed(raws, labels): return joint_transform(raws, labels, **TRANSFORM_PARAMS['joint'])
     def raw_transform_fixed(raws): return raw_transform(raws, **TRANSFORM_PARAMS['raw'])
     def label_transform_fixed(labels): return label_transform(labels, **TRANSFORM_PARAMS['label'])
@@ -47,17 +64,39 @@ def main(batch_size, **kwargs):
     device = torch.device(device)
 
     model = UnetModel(in_channels=1, out_channels=1, model_depth=3).to(device)
-    optimizer = torch.optim.Adam(model.parameters())
-    criterion = DiceLoss(epsilon=1e-8)
+    if load_path:
+        model.load_state_dict(torch.load(load_path))
+        if n_eval > 0:
+            model.eval()
+            simple_eval_loop(n_eval, model, dataloader, eval_save_path)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
+    criterion = DiceBCEFocalLoss(dice_bce_weight=0.6)
 
     trainer = Trainer(net=model,
                       optimizer=optimizer,
                       criterion=criterion,
-                      no_epochs=50,
+                      no_epochs=n_epochs,
                       batch_size=batch_size)
 
-    trainer.train(dataloader)
+    loss_history = trainer.train(dataloader)
+    plt.plot(loss_history)
+    plt.show()
+
+    torch.save(model.state_dict(), f'models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep{n_epochs}.pth')
+    model.eval()
+
+    for i in range(n_eval):
+        sample = next(enumerate(dataloader))
+        raw, label = sample[0].to(device), sample[1].to(device)
+
+        pred = model(raw).detach().cpu().numpy()
+        label = label.detach().cpu().numpy()
+        np.save(f'models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep{n_epochs}_pred{i}.npy', pred)
+        np.save(f'models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep{n_epochs}_true{i}.npy', label)
 
 
 if __name__ == '__main__':
-    main(batch_size=1, **TRANSFORM_PARAMS)
+    main(batch_size=1, n_epochs=10, n_eval=10,
+         load_path='models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep10.pth',
+         eval_save_path='models/DiceBCEFocal/DiceBCEFocal_w0.6_gamma2_ep10', **TRANSFORM_PARAMS)
