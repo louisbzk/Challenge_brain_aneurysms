@@ -58,7 +58,7 @@ class AneurysmDataset(Dataset):
         if self.joint_transform:
             raw, label = self.joint_transform(raw, label)
 
-        raw = torch.from_numpy(raw)
-        label = torch.from_numpy(label)
+        raw = torch.from_numpy(raw).unsqueeze(0)  # add 1 dimension
+        label = torch.from_numpy(label).unsqueeze(0)
 
         return raw, label

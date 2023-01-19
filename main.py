@@ -1,15 +1,20 @@
+import torch.optim
+
 from dataset import AneurysmDataset
 from transforms import raw_transform, label_transform, joint_transform
 from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
 import numpy as np
+from unet.unet3d import UnetModel, Trainer
+from unet.loss import DiceLoss
 
 
+# set variables to None to skip the corresponding transform
 TRANSFORM_PARAMS = {
     'raw': {
-        'contrast_factor': 3.,
-        'cluster_colors': 20,
-        'cluster_kmeans': 0,
+        'contrast_factor': 3.5,
+        'cluster_colors': None,
+        'cluster_kmeans': 30,
         'cluster_method': 0,
     },
 
@@ -18,9 +23,10 @@ TRANSFORM_PARAMS = {
     },
 
     'joint': {
-        'max_abs_rot': 180.,
-        'sharpen_factor': 5.,
-        'zoom_box': 65,
+        'max_abs_rot': 45.,
+        'flip': True,
+        'sharpen_factor': 1.2,
+        'zoom_box': 101,
     }
 }
 
@@ -35,12 +41,22 @@ def main(batch_size, **kwargs):
                               raw_transform=raw_transform_fixed,
                               label_transform=label_transform_fixed)
 
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
 
-    raw, label = dataset[0]
-    raw_arr, label_arr = raw.detach().cpu().numpy(), label.detach().cpu().numpy()
-    plt.imshow(np.hstack((raw_arr[30], label_arr[30])), cmap='gray')
-    plt.show()
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    device = torch.device(device)
+
+    model = UnetModel(in_channels=1, out_channels=1, model_depth=3).to(device)
+    optimizer = torch.optim.Adam(model.parameters())
+    criterion = DiceLoss(epsilon=1e-8)
+
+    trainer = Trainer(net=model,
+                      optimizer=optimizer,
+                      criterion=criterion,
+                      no_epochs=50,
+                      batch_size=batch_size)
+
+    trainer.train(dataloader)
 
 
 if __name__ == '__main__':

@@ -52,46 +52,34 @@ class Trainer(object):
         self.no_epochs = no_epochs
         self.batch_size = batch_size
 
-    def train(self, batch_data_loader, x, y):
+    def train(self, train_data_loader):
         """
         Load corresponding data and start training
-        :param data_paths_loader: get data paths ready for loading
-        :param dataset_loader: get images and masks data
-        :param batch_data_loader: generate batch data
+
+        :param train_data_loader: DataLoader object
         :return: None
         """
-        pets, masks = x, y
-        training_steps = len(pets) // self.batch_size
-        print(len(pets), self.batch_size)
         loss_array = []
+        iter_per_epoch = len(train_data_loader)  # len(dataset) / batch_size
         for epoch in range(self.no_epochs):
             print('Epoch no: ', epoch)
             start_time = time.time()
             train_losses, train_iou = 0, 0
-            for step in tqdm(range(training_steps)):
-                # print("Training step {}".format(step))
-
-                x_batch, y_batch = batch_data_loader(pets, masks, iter_step=step, batch_size=self.batch_size)
-
-                if self.device.type == 'cuda':
-                    x_batch = torch.from_numpy(x_batch).cuda()
-                    y_batch = torch.from_numpy(y_batch).cuda()
-                else:
-                    x_batch = torch.from_numpy(x_batch)
-                    y_batch = torch.from_numpy(y_batch)
+            for idx, batch in tqdm(enumerate(train_data_loader), total=iter_per_epoch):
+                x_batch = batch[0].to(self.device)
+                y_batch = batch[1].to(self.device)
 
                 self.optimizer.zero_grad()
 
                 logits = self.net(x_batch)
-                y_batch = y_batch.type(torch.int8)
                 loss = self.criterion(logits, y_batch)
                 loss.backward()
                 self.optimizer.step()
                 # train_iou += mean_iou(y_batch, logits)
                 train_losses += loss.item()
             end_time = time.time()
-            loss_array.append(train_losses / training_steps)
-            print('Epoch {}, training loss {:.4f}, time {:.2f}'.format(epoch, train_losses / training_steps,
+            loss_array.append(train_losses / iter_per_epoch)
+            print('Epoch {}, training loss {:.4f}, time {:.2f}'.format(epoch, train_losses / iter_per_epoch,
                                                                        end_time - start_time))
         return loss_array
 

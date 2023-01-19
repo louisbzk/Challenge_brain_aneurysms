@@ -31,10 +31,35 @@ def rand_rotate(raws: np.ndarray, labels: np.ndarray, max_abs_rot: float):
     :param labels: the corresponding labels
     :param max_abs_rot: max rotation in degrees
     """
+    if max_abs_rot is None:
+        return
+
     angle = 2 * (np.random.rand() - 0.5) * max_abs_rot
     for channel in range(len(raws)):
         raws[channel] = raws[channel].rotate(angle)
         labels[channel] = labels[channel].rotate(angle)
+
+
+def rand_flip(raws: np.ndarray, labels: np.ndarray):
+    """
+    Randomly flip the images. A joint transform
+
+    :param raws: the raw images
+    :param labels: the corresponding labels
+    """
+    r = np.random.rand()
+    if r < 0.25:
+        return  # no flip
+    elif r < 0.5:
+        method = Image.FLIP_LEFT_RIGHT
+    elif r < 0.75:
+        method = Image.FLIP_TOP_BOTTOM
+    else:
+        method = Image.FLIP_LEFT_RIGHT | Image.FLIP_TOP_BOTTOM
+
+    for channel in range(len(raws)):
+        raws[channel] = raws[channel].transpose(method)
+        labels[channel] = labels[channel].transpose(method)
 
 
 def sharpen(raws: np.ndarray, labels: np.ndarray, factor: float):
@@ -45,6 +70,9 @@ def sharpen(raws: np.ndarray, labels: np.ndarray, factor: float):
     :param labels: the corresponding labels
     :param factor: <= 1 : less sharp, == 1 : copy, >= 1 : more sharp
     """
+    if factor is None:
+        return
+
     for channel in range(len(raws)):
         enhancer_raw = ImageEnhance.Sharpness(raws[channel])
         enhancer_label = ImageEnhance.Sharpness(labels[channel])
@@ -60,6 +88,9 @@ def zoom(raws: np.ndarray, labels: np.ndarray, box_size: int):
     :param labels: the corresponding labels
     :param box_size: size (in pixels) of the square box centered at the middle, which defines the zoom area
     """
+    if box_size is None:
+        return
+
     w, h = raws[0].size  # images are square, w == h
     if box_size > w:
         raise ValueError(f'Received zoom box size {box_size}, which is bigger than image size ({w})')
@@ -91,6 +122,9 @@ def contrast(raws: np.ndarray, factor: float):
     :param raws: the raw images
     :param factor: <= 1 : less contrast, == 1 : copy, >= 1 : more contrast
     """
+    if factor is None:
+        return
+
     for channel in range(len(raws)):
         enhancer_raw = ImageEnhance.Contrast(raws[channel])
         raws[channel] = enhancer_raw.enhance(factor=factor)
@@ -105,6 +139,9 @@ def cluster(raws: np.ndarray, n_colors: int, kmeans: int = 0, method=0):
     :param kmeans: convergence threshold, may be set to 0
     :param method: see https://pillow.readthedocs.io/en/stable/reference/Image.html#quantization-methods
     """
+    if n_colors is None or kmeans is None or method is None:
+        return
+
     for channel in range(len(raws)):
         raws[channel] = raws[channel].quantize(colors=n_colors, kmeans=kmeans, method=method).convert('L')
 
@@ -133,6 +170,9 @@ def clean_label(labels, dist_from_center_thresh=10.):
     :param dist_from_center_thresh: threshold below which a point is considered 'at the center'
     of the image (in the sense of the L2-norm)
     """
+    if dist_from_center_thresh is None:
+        return
+
     w, h = labels[0].size
     img_center = (w // 2, h // 2)
     for channel in range(len(labels)):
@@ -153,8 +193,8 @@ def _img_to_numpy(raws, labels):
 
 
 def raw_transform(raws, contrast_factor, cluster_colors, cluster_kmeans=0, cluster_method=0):
-    contrast(raws, contrast_factor)
     cluster(raws, cluster_colors, cluster_kmeans, cluster_method)
+    contrast(raws, contrast_factor)
     return raws
 
 
@@ -163,8 +203,10 @@ def label_transform(labels, clean_dist_thresh=10.):
     return labels
 
 
-def joint_transform(raws, labels, max_abs_rot, sharpen_factor, zoom_box):
+def joint_transform(raws, labels, max_abs_rot, sharpen_factor, zoom_box, flip):
     sharpen(raws, labels, sharpen_factor)
+    if flip:
+        rand_flip(raws, labels)
     rand_rotate(raws, labels, max_abs_rot)
     zoom(raws, labels, zoom_box)
     # todo : dist transform ?
