@@ -14,11 +14,15 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import plotly.graph_objects as go
 
-def save_data(x,y,PATH):
-    torch.save({'x':x, 'y':y}, PATH)
+
+def save_data(x, y, PATH):
+    torch.save({'x': x, 'y': y}, PATH)
+
+
 def load_data(PATH):
     data = torch.load(PATH)
     return data['x'], data['y']
+
 
 def save_model(model, optimizer, epoch, loss, lr, PATH):
     torch.save({
@@ -46,6 +50,7 @@ def load_model(PATH, eval =True):
         model.train()
     return model, optimizer, loss, epoch
 
+
 def batch_data_gen(pet_imgs, mask_imgs, iter_step, batch_size=6):
     """
     Get training batch to feed convolution neural network
@@ -65,7 +70,7 @@ def batch_data_gen(pet_imgs, mask_imgs, iter_step, batch_size=6):
     return pet_imgs[step_count: batch_size + step_count], mask_imgs[step_count: batch_size + step_count]
 
 
-def train_main(x,y, in_channels, out_channels, learning_rate, no_epochs):
+def train_main(x, y, in_channels, out_channels, learning_rate, no_epochs):
     """
     Train module
     :param data_folder: data folder
@@ -80,7 +85,7 @@ def train_main(x,y, in_channels, out_channels, learning_rate, no_epochs):
     criterion = DiceLoss()
     trainer = Trainer(net=model, optimizer=optim, criterion=criterion, no_epochs=no_epochs)
     loss_array = trainer.train(batch_data_loader=batch_data_gen, x=x, y=y)
-    save_model(model, optim, no_epochs, loss_array, learning_rate, "holaBuenoDias")
+    save_model(model, optim, no_epochs, loss_array, learning_rate, 'holaBuenoDias')
     return model, optim, loss_array, epoch
 
 def resume_train(x,y, model, optim, previous_loss_array, learning_rate, no_epochs):
@@ -92,7 +97,7 @@ def resume_train(x,y, model, optim, previous_loss_array, learning_rate, no_epoch
     return model, optim, loss_array, epoch
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # data = []
     # for root, dirs, filenames in os.walk('C:\\Users\\33638\\Documents\\Mines-Paris\\Challenge_brain_aneurysms\\Josh_unet\\challenge_dataset\\'):  # adapt path
     #     for file in filenames:

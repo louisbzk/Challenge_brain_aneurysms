@@ -7,16 +7,16 @@ import torch
 import torch.nn as nn
 from unet.building_components import EncoderBlock, DecoderBlock
 from tqdm import tqdm
-sys.path.append("..")
+sys.path.append('..')
 
 
 class UnetModel(nn.Module):
 
-    def __init__(self, in_channels, out_channels, model_depth=4, final_activation="sigmoid"):
+    def __init__(self, in_channels, out_channels, model_depth=4, final_activation='sigmoid'):
         super(UnetModel, self).__init__()
         self.encoder = EncoderBlock(in_channels=in_channels, model_depth=model_depth)
         self.decoder = DecoderBlock(out_channels=out_channels, model_depth=model_depth)
-        if final_activation == "sigmoid":
+        if final_activation == 'sigmoid':
             self.sigmoid = nn.Sigmoid()
         else:
             self.softmax = nn.Softmax(dim=1)
@@ -41,7 +41,7 @@ class Trainer(object):
         :param no_epochs: number of epochs to train the model
         :param batch_size: batch size for generating data during training
         """
-        self.modalities = ["PET", "MASK"]
+        self.modalities = ['PET', 'MASK']
         self.net = net
         if torch.cuda.is_available():
             self.net.cuda()
@@ -58,12 +58,12 @@ class Trainer(object):
         :param batch_data_loader: generate batch data
         :return: None
         """
-        pets, masks = x,y
+        pets, masks = x, y
         training_steps = len(pets) // self.batch_size
         print(len(pets), self.batch_size)
-        loss_array=[]
+        loss_array = []
         for epoch in range(self.no_epochs):
-            print("Epoch no: ", epoch)
+            print('Epoch no: ', epoch)
             start_time = time.time()
             train_losses, train_iou = 0, 0
             for step in tqdm(range(training_steps)):
@@ -84,7 +84,7 @@ class Trainer(object):
                 train_losses += loss.item()
             end_time = time.time()
             loss_array.append(train_losses / training_steps)
-            print("Epoch {}, training loss {:.4f}, time {:.2f}".format(epoch, train_losses / training_steps,
+            print('Epoch {}, training loss {:.4f}, time {:.2f}'.format(epoch, train_losses / training_steps,
                                                                        end_time - start_time))
         return loss_array
 
@@ -95,10 +95,10 @@ class Trainer(object):
         pass
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     inputs = torch.randn(1, 1, 96, 96, 96)
-    print("The shape of inputs: ", inputs.shape)
-    data_folder = "../processed"
+    print('The shape of inputs: ', inputs.shape)
+    data_folder = '../processed'
     model = UnetModel(in_channels=1, out_channels=1)
     inputs = inputs.cuda()
     model.cuda()
