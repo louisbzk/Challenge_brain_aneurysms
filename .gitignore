@@ -4,3 +4,5 @@ challenge_dataset
 *.pdf
 *.png
 models/
+*.h5
+*.npy

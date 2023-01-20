@@ -12,15 +12,13 @@ class DiceLoss(nn.Module):
         # smooth factor
         self.epsilon = epsilon
 
-    def forward(self, targets, logits):
-        batch_size = targets.size(0)
-        # log_prob = torch.sigmoid(logits)
-        logits = logits.view(batch_size, -1).type(torch.FloatTensor)
-        targets = targets.view(batch_size, -1).type(torch.FloatTensor)
-        intersection = (logits * targets).sum(-1)
-        dice_score = 2. * intersection / ((logits + targets).sum(-1) + self.epsilon)
+    def forward(self, logits, true):
+        inputs = logits.view(-1)
+        targets = true.view(-1)
+        intersection = (inputs * targets).sum()
+        dice_score = 2. * (intersection + self.epsilon) / (inputs.sum() + targets.sum() + self.epsilon)
         # dice_score = 1 - dice_score.sum() / batch_size
-        return torch.mean(1. - dice_score)
+        return 1. - dice_score
 
 
 class DiceBCEFocalLoss(nn.Module):
@@ -78,6 +76,37 @@ class IoUTverskyLoss(nn.Module):
         tversky_loss = 1. - tversky
 
         return self.iou_weight * iou_loss + (1. - self.iou_weight) * tversky_loss
+
+
+class IoUCohensKappa(nn.Module):
+    def __init__(self, iou_weight, smooth=1e-8):
+        if not (0. <= iou_weight <= 1.):
+            raise ValueError(f'Invalid value for iou_weight ({iou_weight}). Must be between 0 and 1')
+        super(IoUCohensKappa, self).__init__()
+        self.iou_weight = iou_weight
+        self.smooth = smooth
+
+    def forward(self, pred, true):
+        inputs = pred.view(-1)
+        targets = true.view(-1)
+
+        # intersection is equivalent to True Positive count
+        # union is the mutually inclusive area of all labels & predictions
+        intersection = (inputs * targets).sum()
+        total = (inputs + targets).sum()
+        union = total - intersection
+
+        iou = (intersection + self.smooth) / (union + self.smooth)
+        iou_loss = 1. - iou
+
+        TP = (inputs * targets).sum()
+        FP = ((1 - targets) * inputs).sum()
+        FN = (targets * (1. - inputs)).sum()
+        TN = ((1 - targets) * (1 - inputs)).sum()
+
+        kappa = 2 * (TP * TN - FN * FP) / ((TP + FP)*(FP + TN) + (TP + FN)*(FN + TN))
+
+        return self.iou_weight * iou_loss + (1. - self.iou_weight) * kappa
 
 
 class AsymmetricLoss(nn.Module):

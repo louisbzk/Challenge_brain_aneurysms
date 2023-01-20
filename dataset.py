@@ -62,4 +62,4 @@ class AneurysmDataset(Dataset):
         raw = torch.from_numpy(raw).unsqueeze(0)  # add 1 dimension
         label = torch.from_numpy(label).unsqueeze(0)
 
-        return raw, label, file_path, transform_hist
+        return raw, label  # , file_path, transform_hist

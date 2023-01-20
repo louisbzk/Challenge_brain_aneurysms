@@ -3,6 +3,8 @@ from PIL import Image, ImageEnhance
 from utils import get_raws, get_labels, load_data
 from dataviz import view_sample, show_aneurysm
 import scipy.ndimage as scim
+import os
+import h5py
 
 
 class DataEnhancer:
@@ -70,6 +72,20 @@ class DataEnhancer:
                 self.data[i][channel][1] = enhancer_label.enhance(
                     factor=factor)
 
+    def crop(self, final_size: int):
+        orig_size = self.data_shape[2]
+        self.data_shape = (self.data_shape[0], self.data_shape[1], final_size, final_size)
+        img_center = (orig_size // 2, orig_size // 2)
+        x_left, x_right = img_center[0] - final_size // 2, img_center[0] + final_size // 2
+        y_top, y_bottom = img_center[1] - final_size // 2, img_center[1] + final_size // 2
+        for i in range(self.data_shape[0]):
+            for channel in range(self.data_shape[1]):
+                raw = self.data[i][channel][0]
+                label = self.data[i][channel][1]
+
+                self.data[i][channel][0] = raw.crop(box=(x_left, y_top, x_right, y_bottom))
+                self.data[i][channel][1] = label.crop(box=(x_left, y_top, x_right, y_bottom))
+
     def contrast_raws(self, factor):
         """
         Contrast raws by a given factor
@@ -130,6 +146,32 @@ class DataEnhancer:
                         # there are labels, but not at the center
                         self.data[i][channel][1] = Image.fromarray(
                             np.zeros_like(label), mode=label.mode)
+
+    @staticmethod
+    def _img_to_numpy(raws, labels):
+        raws_np = np.empty(shape=(len(raws), *raws[0].size), dtype=np.uint8)
+        labels_np = np.empty(shape=(len(raws), *raws[0].size), dtype=np.uint8)
+
+        for channel in range(len(raws)):
+            raws_np[channel] = np.asarray(raws[channel], dtype=np.uint8)
+            labels_np[channel] = np.asarray(labels[channel], dtype=np.uint8)
+
+        return raws_np, labels_np
+
+    def save(self, path: str, index: int):
+        if not os.path.isdir(path):
+            os.makedirs(path, exist_ok=True)
+
+        all_raws = self.raws()
+        all_labels = self.labels()
+        print(all_raws.shape)
+
+        for i in range(self.data_shape[0]):
+            raws = all_raws[i]
+            labels = all_labels[i]
+            with h5py.File(os.path.join(path, f'scan_{i}_{index}.h5'), 'w') as f:
+                f.create_dataset('raw', data=raws)
+                f.create_dataset('label', data=labels)
 
 
 def main():
