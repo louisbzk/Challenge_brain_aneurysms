@@ -3,3 +3,8 @@ __pycache__
 challenge_dataset
 *.pdf
 *.png
+augmented_data*
+models
+predictions
+test_dataset
+results_viz.ipynb
