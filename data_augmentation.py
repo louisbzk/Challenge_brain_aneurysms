@@ -3,6 +3,8 @@ from PIL import Image, ImageEnhance
 from utils import get_raws, get_labels, load_data
 from dataviz import view_sample, show_aneurysm
 import scipy.ndimage as scim
+import os
+import h5py
 
 
 class DataEnhancer:
@@ -20,22 +22,23 @@ class DataEnhancer:
                                       Image.fromarray(label[i], mode='L')])
 
         self.data_shape = (len(self.data), *sample_shape)
+        self.img_size = self.data[0][0][0].size
 
-    def raws(self):
-        raws = np.empty(shape=self.data_shape, dtype=np.uint8)
+    def raws(self, dtype):
+        raws = np.empty(shape=self.data_shape, dtype=dtype)
         for i in range(self.data_shape[0]):
             for channel in range(self.data_shape[1]):
                 raws[i][channel] = np.asarray(
-                    self.data[i][channel][0], dtype=np.uint8)
+                    self.data[i][channel][0], dtype=dtype)
 
         return raws
 
-    def labels(self):
-        labels = np.empty(shape=self.data_shape, dtype=np.uint8)
+    def labels(self, dtype):
+        labels = np.empty(shape=self.data_shape, dtype=dtype)
         for i in range(self.data_shape[0]):
             for channel in range(self.data_shape[1]):
                 labels[i][channel] = np.asarray(
-                    self.data[i][channel][1], dtype=np.uint8)
+                    self.data[i][channel][1], dtype=dtype)
 
         return labels
 
@@ -51,8 +54,8 @@ class DataEnhancer:
             for channel in range(self.data_shape[1]):
                 raw, label = self.data[i][channel][0], self.data[i][channel][1]
                 # todo : might have to use 'expand=True'
-                self.data[i][channel][0] = raw.rotate(angle=angle)
-                self.data[i][channel][1] = label.rotate(angle=angle)
+                self.data[i][channel][0] = raw.rotate(angle=angle, resample=Image.NEAREST)
+                self.data[i][channel][1] = label.rotate(angle=angle, resample=Image.NEAREST)
 
     def sharpen(self, factor):
         """
@@ -69,6 +72,13 @@ class DataEnhancer:
                 self.data[i][channel][0] = enhancer_raw.enhance(factor=factor)
                 self.data[i][channel][1] = enhancer_label.enhance(
                     factor=factor)
+
+    def crop(self, final_size: int):
+        raws_np, labels_np = self.raws(np.float32), self.labels(np.float32)
+        img_center = (self.img_size[0]//2, self.img_size[1]//2)
+        top_left = (img_center[0] - final_size//2, img_center[1] - final_size//2)
+        bot_right = (img_center[0] + final_size//2, img_center[1] + final_size//2)
+        return raws_np[:, :, top_left[0]:bot_right[0], top_left[1]:bot_right[1]], labels_np[:, :, top_left[0]:bot_right[0], top_left[1]:bot_right[1]]
 
     def contrast_raws(self, factor):
         """
@@ -131,21 +141,45 @@ class DataEnhancer:
                         self.data[i][channel][1] = Image.fromarray(
                             np.zeros_like(label), mode=label.mode)
 
+    def _img_to_numpy(self, dtype):
+        raws, labels = self.raws(dtype), self.labels(dtype)
+        raws_np = np.empty(shape=(*raws.shape, *self.img_size), dtype=dtype)
+        labels_np = np.empty(shape=(*raws.shape, *self.img_size), dtype=dtype)
 
-def main():
+        for channel in range(len(raws)):
+            raws_np[channel] = np.asarray(raws[channel], dtype=dtype)
+            labels_np[channel] = np.asarray(labels[channel], dtype=dtype)
+
+        return raws_np, labels_np
+
+    @staticmethod
+    def save(all_raws, all_labels, path: str, index: int):
+        if not os.path.isdir(path):
+            os.makedirs(path, exist_ok=True)
+
+        print(all_raws.shape)
+
+        for i in range(len(all_raws)):
+            raws = all_raws[i]
+            labels = all_labels[i]
+            with h5py.File(os.path.join(path, f'scan_{i}_{index}.h5'), 'w') as f:
+                f.create_dataset('raw', data=raws)
+                f.create_dataset('label', data=labels)
+
+
+def data_enhancer_test():
     # For debugging purposes
     data = load_data('challenge_dataset/')
     enhancer = DataEnhancer(data=data)
-    enhancer.clean_labels(dist_from_center_threshold=10.)  # clean_labels : OK
+    # enhancer.clean_labels(dist_from_center_threshold=10.)  # clean_labels : OK
     enhancer.rand_rotate(max_abs_rot=20.)  # rand_rotate : OK
-    enhancer.contrast_raws(factor=1.4)  # contrast_raws : OK
-    enhancer.cluster_raws(n_colors=3, kmeans=0)  # cluster_raws : OK
-    enhancer.sharpen(factor=1.15)  # sharpen : OK
-    raws = enhancer.raws()
-    view_sample(raws, 0)
-    labels = enhancer.labels()
-    show_aneurysm(raws, labels, 0)
+    enhancer.contrast_raws(factor=2.1)  # contrast_raws : OK
+    # enhancer.cluster_raws(n_colors=3, kmeans=0)  # cluster_raws : OK
+    enhancer.sharpen(factor=1.1)  # sharpen : OK
+    raws_crop, labels_crop = enhancer.crop(final_size=32)
+    view_sample(raws_crop, 0)
+    show_aneurysm(raws_crop, labels_crop, 25)
 
 
 if __name__ == '__main__':
-    main()
+    data_enhancer_test()
