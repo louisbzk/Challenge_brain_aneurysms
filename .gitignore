@@ -8,3 +8,5 @@ models
 predictions
 test_dataset
 results_viz.ipynb
+checkpoint/
+*_data/
